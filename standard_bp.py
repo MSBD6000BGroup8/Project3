@@ -120,7 +120,7 @@ def main(unused_argv):
         train_input_fn = tf.estimator.inputs.numpy_input_fn(
             x={"x": train_data},
             y=train_labels,
-            batch_size=100,
+            batch_size=128,
             num_epochs=None,
             shuffle=True)
         image_classifier.train(
