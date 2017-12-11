@@ -1,6 +1,6 @@
 import numpy as np
 import tensorflow as tf
-import pandas as pd
+import os
 import tables
 
 tf.logging.set_verbosity(tf.logging.INFO)
@@ -136,4 +136,7 @@ def main(unused_argv):
 
 
 if __name__ == "__main__":
+    filelist = [f for f in os.listdir('./model') if f != 'eval']
+    for f in filelist:
+        os.remove(os.path.join('./model/', f))
     tf.app.run()
