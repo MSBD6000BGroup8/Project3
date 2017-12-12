@@ -24,7 +24,8 @@ def cnn_model_fn(features, labels, mode):
     # First max pooling layer with a 2x2 filter and stride of 2
     # Input Tensor Shape: [batch_size, 112, 112, 32]
     # Output Tensor Shape: [batch_size, 56, 56, 32]
-    pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
+    # pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
+    pool1 = conv1
 
     # Convolutional Layer #2
     # Computes 64 features using a 5x5 filter.
@@ -40,16 +41,29 @@ def cnn_model_fn(features, labels, mode):
     # Output Tensor Shape: [batch_size, 28, 28, 64]
     pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[2, 2], strides=2)
 
+    # Pooling Layer #3
+    # Second max pooling layer with a 2x2 filter and stride of 2
+    # Input Tensor Shape: [batch_size, 56, 56, 64]
+    # Output Tensor Shape: [batch_size, 28, 28, 64]
+    conv3 = tf.layers.conv2d(inputs=pool2, filters=256, kernel_size=[3, 3], strides=1, padding="same",
+                             activation=tf.nn.relu, kernel_initializer=None)
+
+    # Pooling Layer #2
+    # Second max pooling layer with a 2x2 filter and stride of 2
+    # Input Tensor Shape: [batch_size, 56, 56, 64]
+    # Output Tensor Shape: [batch_size, 28, 28, 64]
+    pool3 = tf.layers.max_pooling2d(inputs=conv3, pool_size=[2, 2], strides=2)
+
     # Flatten tensor into a batch of vectors
     # Input Tensor Shape: [batch_size, 14, 14, 64]
     # Output Tensor Shape: [batch_size, 14 * 14 * 64]
-    pool2_flat = tf.reshape(pool2, [-1, 8 * 8 * 256])
+    pool3_flat = tf.reshape(pool3, [-1, 8 * 8 * 256])
 
     # Dense Layer #1
     # Densely connected layer with 512 neurons
     # Input Tensor Shape: [batch_size, 14 * 14 * 256]
     # Output Tensor Shape: [batch_size, 512]
-    dense1 = tf.layers.dense(inputs=pool2_flat, units=512, activation=tf.nn.relu)
+    dense1 = tf.layers.dense(inputs=pool3_flat, units=512, activation=tf.nn.relu)
 
     # Add dropout operation; 0.6 probability that element will be kept
     dropout1 = tf.layers.dropout(inputs=dense1, rate=0.5, training=mode == tf.estimator.ModeKeys.TRAIN)
@@ -75,7 +89,7 @@ def cnn_model_fn(features, labels, mode):
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
-        optimizer = tf.train.AdamOptimizer(learning_rate=0.0001)
+        optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
         train_op = optimizer.minimize(loss=loss, global_step=tf.train.get_global_step())
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
@@ -115,7 +129,7 @@ def main(unused_argv):
         num_epochs=1,
         shuffle=False)
 
-    for i in range(2000):
+    for i in range(501):
         # Train the model
         train_input_fn = tf.estimator.inputs.numpy_input_fn(
             x={"x": train_data},
@@ -133,6 +147,7 @@ def main(unused_argv):
             print("Validation result: \n",eval_results)
             test_results = image_classifier.evaluate(input_fn=test_input_fn)
             print("Test result: \n",test_results)
+
 
 
 if __name__ == "__main__":
