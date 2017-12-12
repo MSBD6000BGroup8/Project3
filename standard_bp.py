@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 import os
 import tables
+import pandas as pd
 
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -129,7 +130,8 @@ def main(unused_argv):
         num_epochs=1,
         shuffle=False)
 
-    for i in range(501):
+    Results = pd.DataFrame(columns=['Epoch','Test_Accuracy'])
+    for i in range(2):
         # Train the model
         train_input_fn = tf.estimator.inputs.numpy_input_fn(
             x={"x": train_data},
@@ -147,6 +149,10 @@ def main(unused_argv):
             print("Validation result: \n",eval_results)
             test_results = image_classifier.evaluate(input_fn=test_input_fn)
             print("Test result: \n",test_results)
+            Results.loc[len(Results),'Epoch'] = i
+            Results.loc[len(Results)-1, 'Test_Accuracy'] = test_results['accuracy']
+
+    Results.to_csv('Results.csv',index=False)
 
 
 
