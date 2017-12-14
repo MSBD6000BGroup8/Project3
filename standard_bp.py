@@ -26,7 +26,6 @@ def cnn_model_fn(features, labels, mode):
     pool1 = tf.layers.max_pooling2d(inputs=cccp2, pool_size=[3, 3], strides=2, padding='same')
     pool1 = tf.layers.dropout(inputs=pool1, rate=0.5, training=mode == tf.estimator.ModeKeys.TRAIN)
 
-
     # Convolutional Layer #2
     conv2 = tf.layers.conv2d(inputs=pool1, filters=192, kernel_size=[5, 5], strides=1, padding="same",
                              activation=tf.nn.relu, kernel_initializer=None)
@@ -37,13 +36,10 @@ def cnn_model_fn(features, labels, mode):
     cccp4 = tf.layers.conv2d(inputs=cccp3, filters=192, kernel_size=[1, 1], strides=1, padding="same",
                              activation=tf.nn.relu, kernel_initializer=None)
     # Pooling Layer #2
-
     pool2 = tf.layers.average_pooling2d(inputs=cccp4, pool_size=[3, 3], strides=2, padding='same')
     pool2 = tf.layers.dropout(inputs=pool2, rate=0.5, training=mode == tf.estimator.ModeKeys.TRAIN)
-    # Pooling Layer #3
-    # Second max pooling layer with a 2x2 filter and stride of 2
-    # Input Tensor Shape: [batch_size, 56, 56, 64]
-    # Output Tensor Shape: [batch_size, 28, 28, 64]
+    
+    # Convolutional Layer #3
     conv3 = tf.layers.conv2d(inputs=pool2, filters=192, kernel_size=[3, 3], strides=1, padding="same",
                              activation=tf.nn.relu, kernel_initializer=None)
 
@@ -52,21 +48,13 @@ def cnn_model_fn(features, labels, mode):
 
     cccp6 = tf.layers.conv2d(inputs=cccp5, filters=10, kernel_size=[1, 1], strides=1, padding="same",
                              activation=tf.nn.relu, kernel_initializer=None)
-    # Pooling Layer #2
-    # Second max pooling layer with a 2x2 filter and stride of 2
-    # Input Tensor Shape: [batch_size, 56, 56, 64]
-    # Output Tensor Shape: [batch_size, 28, 28, 64]
+    # Pooling Layer #3
     pool3 = tf.layers.average_pooling2d(inputs=cccp6, pool_size=[8, 8], strides=1, padding="valid")
 
     # Flatten tensor into a batch of vectors
-    # Input Tensor Shape: [batch_size, 14, 14, 64]
-    # Output Tensor Shape: [batch_size, 14 * 14 * 64]
     pool3_flat = tf.reshape(pool3, [-1, 10])
 
-
     # Logits layer
-    # Input Tensor Shape: [batch_size, 512]
-    # Output Tensor Shape: [batch_size, 10]
     logits = tf.layers.dense(inputs=pool3_flat, units=10)
 
     predictions = {
@@ -138,7 +126,7 @@ def main(unused_argv):
             input_fn=train_input_fn,
             steps=1)
 
-        # Monitor the validation accuarcy every 20 iterations
+        # Monitor the validation accuarcy every iteration
         if i % 1 == 0:
             # eval_results = image_classifier.evaluate(input_fn=eval_input_fn)
             # print("Validation result: \n",eval_results)
