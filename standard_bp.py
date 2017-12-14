@@ -55,7 +55,7 @@ def cnn_model_fn(features, labels, mode):
     pool3_flat = tf.reshape(pool3, [-1, 10])
 
     # Logits layer
-    logits = tf.layers.dense(inputs=pool3_flat, units=10)
+    logits = pool3_flat
 
     predictions = {
         # Generate predictions (for PREDICT and EVAL mode)
