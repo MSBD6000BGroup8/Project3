@@ -55,7 +55,7 @@ def cnn_model_fn(features, labels, mode):
     pool3_flat = tf.reshape(pool3, [-1, 10])
 
     # Logits layer
-    logits = pool3_flat
+    pool3_flat = tf.squeeze(pool3)
 
     predictions = {
         # Generate predictions (for PREDICT and EVAL mode)
