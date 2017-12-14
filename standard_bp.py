@@ -14,65 +14,60 @@ def cnn_model_fn(features, labels, mode):
     input_layer = tf.reshape(features["x"], [-1, 32, 32, 3])
 
     # Convolutional Layer #1
-    # Computes 32 features using a 11x11 filter with ReLU activation.
-    # Padding is added to preserve width and height.
-    # Input Tensor Shape: [batch_size, 224, 224, 1]
-    # Output Tensor Shape: [batch_size, 112, 112, 32]
-    conv1 = tf.layers.conv2d(inputs=input_layer, filters=96, kernel_size=[3, 3], strides=1, padding="same",
+    conv1 = tf.layers.conv2d(inputs=input_layer, filters=192, kernel_size=[5, 5], strides=1, padding="same",
                              activation=tf.nn.relu, kernel_initializer=None)
 
+    cccp1 = tf.layers.conv2d(inputs=conv1, filters=160, kernel_size=[1, 1], strides=1, padding="same",
+                             activation=tf.nn.relu, kernel_initializer=None)
+
+    cccp2 = tf.layers.conv2d(inputs=cccp1, filters=96, kernel_size=[1, 1], strides=1, padding="same",
+                             activation=tf.nn.relu, kernel_initializer=None)
     # Pooling Layer #1
-    # First max pooling layer with a 2x2 filter and stride of 2
-    # Input Tensor Shape: [batch_size, 112, 112, 32]
-    # Output Tensor Shape: [batch_size, 56, 56, 32]
-    # pool1 = tf.layers.max_pooling2d(inputs=conv1, pool_size=[2, 2], strides=2)
-    pool1 = conv1
+    pool1 = tf.layers.max_pooling2d(inputs=cccp2, pool_size=[3, 3], strides=2, padding='same')
+    pool1 = tf.layers.dropout(inputs=pool1, rate=0.5, training=mode == tf.estimator.ModeKeys.TRAIN)
+
 
     # Convolutional Layer #2
-    # Computes 64 features using a 5x5 filter.
-    # Padding is added to preserve width and height.
-    # Input Tensor Shape: [batch_size, 56, 56, 32]
-    # Output Tensor Shape: [batch_size, 56, 56, 64]
-    conv2 = tf.layers.conv2d(inputs=pool1, filters=256, kernel_size=[3, 3], strides=1, padding="same",
+    conv2 = tf.layers.conv2d(inputs=pool1, filters=192, kernel_size=[5, 5], strides=1, padding="same",
                              activation=tf.nn.relu, kernel_initializer=None)
 
-    # Pooling Layer #2
-    # Second max pooling layer with a 2x2 filter and stride of 2
-    # Input Tensor Shape: [batch_size, 56, 56, 64]
-    # Output Tensor Shape: [batch_size, 28, 28, 64]
-    pool2 = tf.layers.max_pooling2d(inputs=conv2, pool_size=[2, 2], strides=2)
+    cccp3 = tf.layers.conv2d(inputs=conv2, filters=192, kernel_size=[1, 1], strides=1, padding="same",
+                             activation=tf.nn.relu, kernel_initializer=None)
 
+    cccp4 = tf.layers.conv2d(inputs=cccp3, filters=192, kernel_size=[1, 1], strides=1, padding="same",
+                             activation=tf.nn.relu, kernel_initializer=None)
+    # Pooling Layer #2
+
+    pool2 = tf.layers.average_pooling2d(inputs=cccp4, pool_size=[3, 3], strides=2, padding='same')
+    pool2 = tf.layers.dropout(inputs=pool2, rate=0.5, training=mode == tf.estimator.ModeKeys.TRAIN)
     # Pooling Layer #3
     # Second max pooling layer with a 2x2 filter and stride of 2
     # Input Tensor Shape: [batch_size, 56, 56, 64]
     # Output Tensor Shape: [batch_size, 28, 28, 64]
-    conv3 = tf.layers.conv2d(inputs=pool2, filters=256, kernel_size=[3, 3], strides=1, padding="same",
+    conv3 = tf.layers.conv2d(inputs=pool2, filters=192, kernel_size=[3, 3], strides=1, padding="same",
                              activation=tf.nn.relu, kernel_initializer=None)
 
+    cccp5 = tf.layers.conv2d(inputs=conv3, filters=192, kernel_size=[1, 1], strides=1, padding="same",
+                             activation=tf.nn.relu, kernel_initializer=None)
+
+    cccp6 = tf.layers.conv2d(inputs=cccp5, filters=10, kernel_size=[1, 1], strides=1, padding="same",
+                             activation=tf.nn.relu, kernel_initializer=None)
     # Pooling Layer #2
     # Second max pooling layer with a 2x2 filter and stride of 2
     # Input Tensor Shape: [batch_size, 56, 56, 64]
     # Output Tensor Shape: [batch_size, 28, 28, 64]
-    pool3 = tf.layers.max_pooling2d(inputs=conv3, pool_size=[2, 2], strides=2)
+    pool3 = tf.layers.average_pooling2d(inputs=cccp6, pool_size=[8, 8], strides=1, padding="valid")
 
     # Flatten tensor into a batch of vectors
     # Input Tensor Shape: [batch_size, 14, 14, 64]
     # Output Tensor Shape: [batch_size, 14 * 14 * 64]
-    pool3_flat = tf.reshape(pool3, [-1, 8 * 8 * 256])
+    pool3_flat = tf.reshape(pool3, [-1, 10])
 
-    # Dense Layer #1
-    # Densely connected layer with 512 neurons
-    # Input Tensor Shape: [batch_size, 14 * 14 * 256]
-    # Output Tensor Shape: [batch_size, 512]
-    dense1 = tf.layers.dense(inputs=pool3_flat, units=512, activation=tf.nn.relu)
-
-    # Add dropout operation; 0.6 probability that element will be kept
-    dropout1 = tf.layers.dropout(inputs=dense1, rate=0.5, training=mode == tf.estimator.ModeKeys.TRAIN)
 
     # Logits layer
     # Input Tensor Shape: [batch_size, 512]
     # Output Tensor Shape: [batch_size, 10]
-    logits = tf.layers.dense(inputs=dropout1, units=10)
+    logits = tf.layers.dense(inputs=pool3_flat, units=10)
 
     predictions = {
         # Generate predictions (for PREDICT and EVAL mode)
@@ -131,7 +126,7 @@ def main(unused_argv):
         shuffle=False)
 
     Results = pd.DataFrame(columns=['Epoch','Test_Accuracy'])
-    for i in range(2):
+    for i in range(251):
         # Train the model
         train_input_fn = tf.estimator.inputs.numpy_input_fn(
             x={"x": train_data},
@@ -144,9 +139,9 @@ def main(unused_argv):
             steps=1)
 
         # Monitor the validation accuarcy every 20 iterations
-        if i % 10 == 0:
-            eval_results = image_classifier.evaluate(input_fn=eval_input_fn)
-            print("Validation result: \n",eval_results)
+        if i % 1 == 0:
+            # eval_results = image_classifier.evaluate(input_fn=eval_input_fn)
+            # print("Validation result: \n",eval_results)
             test_results = image_classifier.evaluate(input_fn=test_input_fn)
             print("Test result: \n",test_results)
             Results.loc[len(Results),'Epoch'] = i
@@ -161,3 +156,4 @@ if __name__ == "__main__":
     for f in filelist:
         os.remove(os.path.join('./model/', f))
     tf.app.run()
+
