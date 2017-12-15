@@ -16,7 +16,7 @@ np.random.seed(0);tf.set_random_seed(0);
 # Get arguments
 parser = argparse.ArgumentParser()
 parser.add_argument('--model_id', default='0', type=int, help='The id number of the model to evaluate: i.e. 0 -->nin model')
-parser.add_argument('--sparsity_function_id', default='0', type=int, help='The id number of the sparsity penalty function: i.e. 0 -->l0-norm function and 1 --> l1-norm function')
+parser.add_argument('--sparsity_function_id', default='1', type=int, help='The id number of the sparsity penalty function: i.e. 0 -->l0-norm function and 1 --> l1-norm function')
 parser.add_argument('--data_path', default=os.path.realpath(os.path.join(os.path.dirname(__file__), '../')), help='Training data path')#'/media/disk/marc/cifar-10'
 parser.add_argument('--ckpt_path_pretrained', default= os.path.realpath(os.path.join(os.path.dirname(__file__), '../pretrained')), help='path for loading pretrained network') 
 parser.add_argument('--ckpt_path_ADMM', default= os.path.realpath(os.path.join(os.path.dirname(__file__), '../sparse_results')), help=' path for saving ADMM ckpt output results') 
@@ -30,7 +30,7 @@ ckpt_path_ADMM = os.path.join(args.ckpt_path_ADMM,model_name) # path for saving 
 if not os.path.exists(ckpt_path_ADMM):
     os.makedirs(ckpt_path_ADMM)
 learning_rate = [0.001,0.001,0.001]; quiet = 1
-st_p = 0.001; en_p = 1; num_p = 10
+st_p = 0.01; en_p = 1; num_p = 10
 mu_log_vals = np.logspace(np.log10(st_p), np.log10(en_p), num=num_p) # Set values of sparsity-promoting parameter mu
 options = {'muval':mu_log_vals,'rho':100.0,'maxiter':10}
 options['method'] ='blkcard'
@@ -39,7 +39,7 @@ eps_abs = 1.e-4; eps_rel = 1.e-2 # absolute and relative tolerances for the stop
 ##=========================== Get images and labels for CIFAR-10. ===================
 ADMMutils.maybe_download_and_extract()
 filenames = [os.path.join(data_path, '.data/cifar-10-batches-bin/data_batch_%d.bin' % i) for i in range(1, 6)]
-num_samples = 500; num_total_samples = 50000; ckpt_write_period_max = 20000; batch_size = 128;    
+num_samples = 50000; num_total_samples = 50000; ckpt_write_period_max = 20000; batch_size = 128;    
 filename_queue = tf.train.string_input_producer(filenames) #Create a queue that produces the filenames to read.
 example, label = ADMMutils.ImageProducer(filename_queue);
 
@@ -140,7 +140,7 @@ while(True):
     print ('mu_id = %s and mu_value = %s\n'%(str(mu_id),str(mu)), end="")
     dictADMM[mu_placeholder] = [mu]
     ADMM_Max_Iter = 10#options['maxiter']
-    NUM_EPOCHS = 250#250
+    NUM_EPOCHS = 2500#250
     max_steps = int(np.floor(num_samples*NUM_EPOCHS/batch_size))
     ckpt_write_period = min(np.floor(max_steps/4),ckpt_write_period_max)
     #Solve the minimization problem using ADMM         
