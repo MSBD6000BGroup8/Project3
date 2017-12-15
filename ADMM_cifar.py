@@ -30,7 +30,7 @@ ckpt_path_ADMM = os.path.join(args.ckpt_path_ADMM,model_name) # path for saving 
 if not os.path.exists(ckpt_path_ADMM):
     os.makedirs(ckpt_path_ADMM)
 learning_rate = [0.001,0.001,0.001]; quiet = 1
-st_p = 0.0001; en_p = 1; num_p = 250
+st_p = 0.001; en_p = 1; num_p = 10
 mu_log_vals = np.logspace(np.log10(st_p), np.log10(en_p), num=num_p) # Set values of sparsity-promoting parameter mu
 options = {'muval':mu_log_vals,'rho':100.0,'maxiter':10}
 options['method'] ='blkcard'
@@ -39,7 +39,7 @@ eps_abs = 1.e-4; eps_rel = 1.e-2 # absolute and relative tolerances for the stop
 ##=========================== Get images and labels for CIFAR-10. ===================
 ADMMutils.maybe_download_and_extract()
 filenames = [os.path.join(data_path, '.data/cifar-10-batches-bin/data_batch_%d.bin' % i) for i in range(1, 6)]
-num_samples = 50000; num_total_samples = 50000; ckpt_write_period_max = 20000; batch_size = 128;    
+num_samples = 500; num_total_samples = 50000; ckpt_write_period_max = 20000; batch_size = 128;    
 filename_queue = tf.train.string_input_producer(filenames) #Create a queue that produces the filenames to read.
 example, label = ADMMutils.ImageProducer(filename_queue);
 
@@ -139,8 +139,8 @@ while(True):
     mu = muval[mu_id]#1.5 * mu
     print ('mu_id = %s and mu_value = %s\n'%(str(mu_id),str(mu)), end="")
     dictADMM[mu_placeholder] = [mu]
-    ADMM_Max_Iter = min(mu_id,10)#options['maxiter']
-    NUM_EPOCHS = min(mu_id,250)#250
+    ADMM_Max_Iter = 10#options['maxiter']
+    NUM_EPOCHS = 250#250
     max_steps = int(np.floor(num_samples*NUM_EPOCHS/batch_size))
     ckpt_write_period = min(np.floor(max_steps/4),ckpt_write_period_max)
     #Solve the minimization problem using ADMM         
@@ -162,11 +162,12 @@ while(True):
                 if (step + 1) == max_steps:
                     checkpoint_path = os.path.join(ckpt_path_ADMM, "%s-%s-%s-%s-%s.ckpt"%(model_name,mu_id,ADMMstep,max_steps,str(0)))
                     saver.save(sess, checkpoint_path)
+                    trainPerf = float(correct)/ (count);
+                    print("acuracy at ADMM step %d is %2.5f."%(ADMMstep,trainPerf))
                 elif step % ckpt_write_period == 0:
                     checkpoint_path = os.path.join(ckpt_path_ADMM, "%s-%s-%s-%s-%s.ckpt"%(model_name,mu_id,ADMMstep,step,str(0)))
                     saver.save(sess, checkpoint_path)
-            trainPerf = float(correct)/ (count);
-            print("acuracy at ADMM step %d is %2.5f."%(ADMMstep,trainPerf))
+            
             ADMM_iter = 0
         # ========================================================
         # Sparse promoting step
@@ -222,11 +223,12 @@ while(True):
         if (fstep + 1) == max_steps:       # Save the model checkpoint periodically.
             checkpoint_path = os.path.join(ckpt_path_ADMM, "%s-%s-%s-%s-%s.ckpt"%(model_name,mu_id,ADMMstep,max_steps,max_steps))
             saver.save(sess, checkpoint_path)
+            trainPerf = float(correct)/ (count); 
+            print("fine-tuning accuracy ",trainPerf)
         elif fstep % ckpt_write_period == 0:
             checkpoint_path = os.path.join(ckpt_path_ADMM, "%s-%s-%s-%s-%s.ckpt"%(model_name,mu_id,ADMMstep,max_steps,fstep+1))
             saver.save(sess, checkpoint_path)
-    trainPerf = float(correct)/ (count); 
-    print("fine-tuning accuracy ",trainPerf)
+    
     Fine_tune_iter = 0 
     solpath['mu'].append(mu)
     mu_id = mu_id + 1
