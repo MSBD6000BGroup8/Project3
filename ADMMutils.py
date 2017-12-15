@@ -55,20 +55,23 @@ def ImageProducer(filename_queue):
     reader = tf.FixedLengthRecordReader(record_bytes=record_bytes)
     key, value = reader.read(filename_queue)
     rec = tf.decode_raw(value, tf.uint8)
-    label = tf.cast(tf.strided_slice(rec, [0], [label_bytes]), tf.int32)
-    label = tf.reshape(label,[1])
+    #label = tf.cast(tf.strided_slice(rec, [0], [label_bytes]), tf.int32)
+    #label = tf.reshape(label,[1])
+    label_byte_slices = tf.slice(rec, [0], [label_bytes])
+    label = tf.cast(label_byte_slices, tf.int32)
     #image = tf.slice(rec, [label_bytes], [image_bytes])#tf.reshape(tf.slice(record_bytes, [label_bytes], [image_bytes]),[depth,height,width])
     image = tf.strided_slice(rec, [label_bytes], [label_bytes + image_bytes])
     image = tf.cast(image, tf.float32)
-    image = tf.reshape(image,[1,image_bytes])  
-    image = tf.subtract(image,tf.reduce_mean(image))
-    scale = tf.constant(55.); thresh = tf.constant(1.)
-    std_val  = tf.div(tf.sqrt(tf.reduce_sum(tf.square(image))),scale); 
-    f4 = lambda: std_val
-    f5 = lambda: thresh
-    normalizer = tf.cond(tf.less(std_val,1e-8),f5,f4)
-    image = tf.div(image,normalizer)
-    image = tf.subtract(image,tf.reduce_mean(image))
+    #image = tf.reshape(image,[1,image_bytes])  
+    #image = tf.subtract(image,tf.reduce_mean(image))
+    #scale = tf.constant(55.); thresh = tf.constant(1.)
+    #std_val  = tf.div(tf.sqrt(tf.reduce_sum(tf.square(image))),scale); 
+    #f4 = lambda: std_val
+    #f5 = lambda: thresh
+    #normalizer = tf.cond(tf.less(std_val,1e-8),f5,f4)
+    #image = tf.div(image,normalizer)
+    image = tf.div(image,255)
+    #image = tf.subtract(image,tf.reduce_mean(image))
     depth_major = tf.reshape(image,[depth,height,width])
     image = tf.transpose(depth_major, [1, 2, 0])
     return image, label
@@ -126,7 +129,7 @@ def block_truncate_conv(V,mu,rho):
     V_shape = tf.shape(V) 
     b = tf.sqrt(tf.div(tf.multiply(2.,mu),rho)) #threshold
     # Reshape the 4D tensor of weights to a 2D matrix with rows containing the conv filters in vectorized form.
-    V_shape1 = tf.concat(0,[tf.multiply(tf.slice(V_shape,[2],[1]),tf.slice(V_shape,[3],[1])),tf.multiply(tf.slice(V_shape,[0],[1]),tf.slice(V_shape,[1],[1]))])
+    V_shape1 = tf.concat([tf.multiply(tf.slice(V_shape,[2],[1]),tf.slice(V_shape,[3],[1])),tf.multiply(tf.slice(V_shape,[0],[1]),tf.slice(V_shape,[1],[1]))],0)
     V = tf.reshape(tf.transpose(V,perm=[2,3,0,1]),V_shape1)
     norm_V = frobenius_norm_block(V,1)  
     norm_V_per_dimension = tf.div(norm_V,tf.cast(tf.slice(V_shape1,[1],[1]),'float'))
@@ -138,8 +141,8 @@ def block_truncate_conv(V,mu,rho):
     f4 = lambda: tf.greater_equal(tf.reduce_mean(norm_V),norm_V)
     f5 = lambda: zero_ind
     zero_ind = tf.cond(tf.greater(num_zero,tf.multiply(coef,tf.cast(V_shape1[0],'float'))),f4,f5)
-    G = tf.select(zero_ind,zero_part,V) 
-    G_shape = tf.concat(0,[tf.slice(V_shape,[2],[1]),tf.slice(V_shape,[3],[1]),tf.slice(V_shape,[0],[1]),tf.slice(V_shape,[1],[1])])
+    G = tf.where(zero_ind,zero_part,V) 
+    G_shape = tf.concat([tf.slice(V_shape,[2],[1]),tf.slice(V_shape,[3],[1]),tf.slice(V_shape,[0],[1]),tf.slice(V_shape,[1],[1])],0)
     G = tf.transpose(tf.reshape(G,G_shape),perm=[2,3,0,1])
     return G,zero_ind
     
@@ -155,5 +158,5 @@ def block_truncate_fc(V,mu,rho):
     f4 = lambda: tf.greater_equal(tf.reduce_mean(norm_V),norm_V)
     f5 = lambda: zero_ind
     zero_ind = tf.cond(tf.greater(num_zero,tf.multiply(coef,tf.reshape(tf.cast(tf.slice(V_shape,[1],[1]),'float'),[]))),f4,f5)
-    G = tf.transpose(tf.select(zero_ind,tf.transpose(zero_part),tf.transpose(V))) 
+    G = tf.transpose(tf.where(zero_ind,tf.transpose(zero_part),tf.transpose(V))) 
     return G,zero_ind    

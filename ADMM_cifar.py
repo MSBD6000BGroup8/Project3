@@ -9,7 +9,7 @@ import numpy as np
 import tensorflow as tf
 
 sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__), '../')))
-from cifar10 import ADMMutils
+import ADMMutils
 import cifar_models
 ##==============================ADMM options==============================
 np.random.seed(0);tf.set_random_seed(0);
@@ -29,11 +29,11 @@ ckpt_path_pretrained = os.path.join(args.ckpt_path_pretrained,model_name) # path
 ckpt_path_ADMM = os.path.join(args.ckpt_path_ADMM,model_name) # path for saving ADMM ckpt output results
 if not os.path.exists(ckpt_path_ADMM):
     os.makedirs(ckpt_path_ADMM)
-learning_rate = [0.001,0.001,0.001]; quiet = 0
-st_p = 0.0001; en_p = 1; num_p = 20
+learning_rate = [0.001,0.001,0.001]; quiet = 1
+st_p = 0.0001; en_p = 1; num_p = 250
 mu_log_vals = np.logspace(np.log10(st_p), np.log10(en_p), num=num_p) # Set values of sparsity-promoting parameter mu
 options = {'muval':mu_log_vals,'rho':100.0,'maxiter':10}
-options['method'] ='blkl1'
+options['method'] ='blkcard'
 rho = options['rho']; muval = options['muval']
 eps_abs = 1.e-4; eps_rel = 1.e-2 # absolute and relative tolerances for the stopping criterion of ADMM
 ##=========================== Get images and labels for CIFAR-10. ===================
@@ -92,7 +92,10 @@ ispredcorrect = tf.equal(predict_op, label_batch)
 accuracy = tf.reduce_mean(tf.cast(ispredcorrect, 'float'))
 train_op_ADMM = tf.train.GradientDescentOptimizer(learning_rate[model_id]).minimize(penalized_cross_entropy) 
 train_op_Finetuning = tf.train.GradientDescentOptimizer(learning_rate[model_id]).minimize(cross_entropy)
-sess = tf.Session();
+
+config=tf.ConfigProto()
+config.gpu_options.allow_growth=True
+sess = tf.Session(config=config);
 ##================== Create a saver, start ADMM algorithm (from a pretrained net) or continue ADMM algorithm ===========
 saver = tf.train.Saver(tf.get_collection('non_trainable_variables')+tf.trainable_variables(),max_to_keep=None);
 init = tf.global_variables_initializer();sess.run(init);
@@ -105,7 +108,7 @@ if ckpt and ckpt.model_checkpoint_path:    # If already saved output ckpt files 
   parameters = ckpt.model_checkpoint_path.split('/')[-1].split('-')
   mu_id = int(parameters[1]); ADMM_step_start = int(parameters[2])
   ADMM_iter= int(parameters[3]); Fine_tune_iter = int(parameters[4].split('.')[0]); 
-  NUM_EPOCHS = min(mu_id+1,20); max_steps = int(np.floor(num_samples*NUM_EPOCHS/batch_size)); 
+  NUM_EPOCHS = min(mu_id+1,250); max_steps = int(np.floor(num_samples*NUM_EPOCHS/batch_size)); 
   if (Fine_tune_iter==max_steps and ADMM_iter==max_steps):
       mu_id += 1;  ADMM_step_start = 0; ADMM_iter = 0; Fine_tune_iter = 0 
   print('Succesfully loaded previous step of ADMM algorithm from %s at mu_step=%s ADMM_step=%s ADMM_iter=%s fine_tune_iter=%s.' %
@@ -137,7 +140,7 @@ while(True):
     print ('mu_id = %s and mu_value = %s\n'%(str(mu_id),str(mu)), end="")
     dictADMM[mu_placeholder] = [mu]
     ADMM_Max_Iter = min(mu_id,10)#options['maxiter']
-    NUM_EPOCHS = min(mu_id,20)#250
+    NUM_EPOCHS = min(mu_id,250)#250
     max_steps = int(np.floor(num_samples*NUM_EPOCHS/batch_size))
     ckpt_write_period = min(np.floor(max_steps/4),ckpt_write_period_max)
     #Solve the minimization problem using ADMM         
@@ -162,6 +165,8 @@ while(True):
                 elif step % ckpt_write_period == 0:
                     checkpoint_path = os.path.join(ckpt_path_ADMM, "%s-%s-%s-%s-%s.ckpt"%(model_name,mu_id,ADMMstep,step,str(0)))
                     saver.save(sess, checkpoint_path)
+            trainPerf = float(correct)/ (count);
+            print("acuracy at ADMM step %d is %2.5f."%(ADMMstep,trainPerf))
             ADMM_iter = 0
         # ========================================================
         # Sparse promoting step
@@ -220,6 +225,8 @@ while(True):
         elif fstep % ckpt_write_period == 0:
             checkpoint_path = os.path.join(ckpt_path_ADMM, "%s-%s-%s-%s-%s.ckpt"%(model_name,mu_id,ADMMstep,max_steps,fstep+1))
             saver.save(sess, checkpoint_path)
+    trainPerf = float(correct)/ (count); 
+    print("fine-tuning accuracy ",trainPerf)
     Fine_tune_iter = 0 
     solpath['mu'].append(mu)
     mu_id = mu_id + 1

@@ -7,7 +7,7 @@ import tensorflow as tf
 
 # Add the ADMMutils module to the import path
 sys.path.append(os.path.realpath(os.path.join(os.path.dirname(__file__), '../')))
-from cifar10 import ADMMutils
+import ADMMutils
 
 
 def model_load(model_id,X,phase):
