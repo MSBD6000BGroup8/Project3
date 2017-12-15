@@ -52,11 +52,11 @@ def cnn_model_fn(features, labels, mode):
     pool3 = tf.layers.average_pooling2d(inputs=cccp6, pool_size=[8, 8], strides=1, padding="valid")
 
     # Flatten tensor into a batch of vectors
-    pool3_flat = tf.reshape(pool3, [-1, 10])
+    pool3_flat = tf.reshape(tf.squeeze(pool3), [-1, 10])
 
     # Logits layer
-    pool3_flat = tf.squeeze(pool3)
-
+    logits = pool3_flat 
+    
     predictions = {
         # Generate predictions (for PREDICT and EVAL mode)
         "classes": tf.argmax(input=logits, axis=1),
@@ -73,7 +73,7 @@ def cnn_model_fn(features, labels, mode):
 
     # Configure the Training Op (for TRAIN mode)
     if mode == tf.estimator.ModeKeys.TRAIN:
-        optimizer = tf.train.AdamOptimizer(learning_rate=0.001)
+        optimizer = tf.train.RMSPropOptimizer(learning_rate=0.0001)
         train_op = optimizer.minimize(loss=loss, global_step=tf.train.get_global_step())
         return tf.estimator.EstimatorSpec(mode=mode, loss=loss, train_op=train_op)
 
