@@ -140,7 +140,7 @@ while(True):
     print ('mu_id = %s and mu_value = %s\n'%(str(mu_id),str(mu)), end="")
     dictADMM[mu_placeholder] = [mu]
     ADMM_Max_Iter = 10#options['maxiter']
-    NUM_EPOCHS = 2500#250
+    NUM_EPOCHS = 250#250
     max_steps = int(np.floor(num_samples*NUM_EPOCHS/batch_size))
     ckpt_write_period = min(np.floor(max_steps/4),ckpt_write_period_max)
     #Solve the minimization problem using ADMM         
